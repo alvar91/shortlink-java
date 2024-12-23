@@ -1,0 +1,6 @@
+org.example
+org.example.controllers
+org.example.models
+org.example.repositories
+org.example.services
+org.example.utils
