@@ -21,9 +21,9 @@ This service provides functionality for shortening long URLs into unique short l
 
 ## Installation
 
-### 1. Clone the repository:
+### 1. Clone the repository
 
-### 2. Build the project in IntelliJ IDEA or using Maven:
+### 2. Build the project in IntelliJ IDEA or using Maven
 
 - **Using IntelliJ IDEA**:  
   Open the project in IntelliJ IDEA, and it should automatically detect and configure the project structure. Then, click on the "Build" menu and choose "Build Project."
@@ -48,7 +48,7 @@ This will download all the necessary dependencies and compile the project.
 - `remove shortUrl`: remove a link
 - `clear`: remove expired links
 
-### 4. How to Test
+## How to Test
 
 1. Generate a user ID
 2. Create a shortened link
@@ -60,3 +60,8 @@ This will download all the necessary dependencies and compile the project.
 
 After generating the UUID, it can be used for the operations with links described above. 
 The UUID is tied to a specific link.
+
+## Docs
+
+The entire documentation for the code has been generated using javadoc and is located in the docs folder. 
+You can view it by opening the file docs/index.html
