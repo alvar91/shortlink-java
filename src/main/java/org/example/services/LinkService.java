@@ -9,50 +9,84 @@ import java.net.URI;
 import java.time.Duration;
 import java.util.UUID;
 
+/**
+ * Service class for managing shortened links.
+ * <p>
+ * Provides functionality for creating, editing, opening, and removing shortened links.
+ * It also enforces rules and limits defined in the {@link ConfigService}.
+ * </p>
+ *
+ * <p><b>Key Features:</b></p>
+ * <ul>
+ *   <li>Create shortened links with configurable lifetime and click limits.</li>
+ *   <li>Open the original URL from a shortened link while respecting activity, expiration, and click limits.</li>
+ *   <li>Edit click limits and manage link ownership.</li>
+ *   <li>Remove expired or inactive links from the repository.</li>
+ * </ul>
+ *
+ * @author alvar91
+ * @version 1.0
+ */
 public class LinkService {
-    // Repository for managing links
+
+    /**
+     * Repository for managing links.
+     */
     private final LinksRepository linksRepository;
 
-    // Configuration service to retrieve configuration values
+    /**
+     * Configuration service to retrieve application settings.
+     */
     private final ConfigService configService;
 
-    // Constructor to initialize LinkService with repositories and configuration service
+    /**
+     * Constructor to initialize the LinkService with a repository and a configuration service.
+     *
+     * @param repository    The {@link LinksRepository} instance to manage links.
+     * @param configService The {@link ConfigService} instance to enforce configuration rules.
+     */
     public LinkService(LinksRepository repository, ConfigService configService) {
         this.linksRepository = repository;
         this.configService = configService;
     }
 
-    // Method to create a shortened link
+    /**
+     * Creates a shortened link for a given user and URL.
+     *
+     * @param userId       The ID of the user creating the shortened link.
+     * @param originalUrl  The original URL to be shortened.
+     * @param clicksLimit  The maximum number of clicks allowed for the shortened link.
+     * @param lifetimeHours The lifetime of the link in hours.
+     * @return The created {@link ShortLink} object.
+     */
     public ShortLink createShortLink(UUID userId, String originalUrl, int clicksLimit, int lifetimeHours) {
-        // Adjust the lifetime and clicks limit according to configuration settings
-        int adjustedTtlHours = Math.min(lifetimeHours, configService.getMaxLifetimeHours()); // Ensure lifetime does not exceed the max limit
-        int adjustedMaxClicks = Math.max(clicksLimit, configService.getMinClicksLimit()); // Ensure clicks limit meets the minimum threshold
-
-        // Generate a unique code for the shortened URL
+        int adjustedTtlHours = Math.min(lifetimeHours, configService.getMaxLifetimeHours());
+        int adjustedMaxClicks = Math.max(clicksLimit, configService.getMinClicksLimit());
         String generatedCode = UrlShortener.generate();
         String generatedShortUrl = "http://clck.ru/" + generatedCode;
-
-        // Convert lifetime in hours to milliseconds
         long ttlInMillis = Duration.ofHours(adjustedTtlHours).toMillis();
 
-        // Create the ShortLink object and save it to the repository
         ShortLink shortLink = new ShortLink(generatedShortUrl, originalUrl, userId, adjustedMaxClicks, ttlInMillis);
         linksRepository.save(shortLink);
 
         return shortLink;
     }
 
-    // Method to open the original URL using the shortened URL
+    /**
+     * Opens the original URL for a given shortened URL.
+     * <p>
+     * If the link is expired, inactive, or exceeds the click limit, it is disabled and removed.
+     * </p>
+     *
+     * @param shortUrl The shortened URL to open.
+     */
     public void openLink(String shortUrl) {
         ShortLink shortLink = linksRepository.find(shortUrl);
-
-        // If the link doesn't exist, notify the user
         if (shortLink == null) {
             System.out.println("Link not found");
             return;
         }
 
-        // Check if the link is active, expired, or has exceeded the click limit
         if (!shortLink.isActive() || shortLink.isExpired() || shortLink.isLimitReached()) {
             System.out.println("The expiration date has passed, or the click limit has been reached");
             shortLink.disableLink();
@@ -61,21 +95,17 @@ public class LinkService {
             return;
         }
 
-        // Increment the click count and try to open the original URL in the browser
         shortLink.incrementClicks();
         try {
-            // If desktop support is available, open the link in the default browser
             if (Desktop.isDesktopSupported()) {
                 Desktop.getDesktop().browse(URI.create(shortLink.getOriginalUrl()));
             } else {
                 System.out.println("Open the link: " + shortLink.getOriginalUrl());
             }
-
         } catch (Exception e) {
             System.out.println("Failed to open the link in the browser: " + e.getMessage());
         }
 
-        // If the click limit is reached, disable the link and remove it
         if (shortLink.isLimitReached()) {
             shortLink.disableLink();
             System.out.println("The click limit has been reached. The link has been disabled");
@@ -84,58 +114,62 @@ public class LinkService {
         }
     }
 
-    // Method to change the click limit for an existing shortened URL
+    /**
+     * Changes the click limit for a given shortened URL.
+     *
+     * @param userId   The ID of the user requesting the change.
+     * @param shortUrl The shortened URL whose limit is to be changed.
+     * @param newLimit The new click limit.
+     * @return {@code true} if the limit was successfully updated; {@code false} otherwise.
+     */
     public boolean editLimit(UUID userId, String shortUrl, int newLimit) {
         ShortLink shortLink = linksRepository.find(shortUrl);
-
-        // If the link doesn't exist, notify the user
         if (shortLink == null) {
             System.out.println("The link was not found");
             return false;
         }
 
-        // Ensure the user is the owner of the link
         if (!shortLink.getUserId().equals(userId)) {
             System.out.println("You are not the owner of this link");
             return false;
         }
 
-        // Adjust the new click limit based on the configuration
         int actualNewLimit = Math.max(newLimit, configService.getMinClicksLimit());
-
-        // Update the click limit
         shortLink.setClickLimit(actualNewLimit);
         System.out.println("The click limit has been changed to: " + actualNewLimit);
 
         return true;
     }
 
-    // Method to remove a shortened URL
+    /**
+     * Removes a shortened URL from the repository.
+     *
+     * @param userId   The ID of the user requesting the removal.
+     * @param shortUrl The shortened URL to be removed.
+     * @return {@code true} if the link was successfully removed; {@code false} otherwise.
+     */
     public boolean removeLink(UUID userId, String shortUrl) {
         ShortLink shortLink = linksRepository.find(shortUrl);
-
-        // If the link doesn't exist, notify the user
         if (shortLink == null) {
             System.out.println("The link was not found");
             return false;
         }
 
-        // Ensure the user is the owner of the link
         if (!shortLink.getUserId().equals(userId)) {
             System.out.println("You are not the owner of this link");
             return false;
         }
 
-        // Remove the link from the repository
         linksRepository.remove(shortUrl);
         System.out.println("The link has been deleted");
 
         return true;
     }
 
-    // Method to remove all expired links from the repository
+    /**
+     * Removes all expired links from the repository.
+     */
     public void removeExpiredLinks() {
-        // Remove links that are expired from the repository
         linksRepository.findAll().values().removeIf(ShortLink::isExpired);
         System.out.println("All expired links have been deleted");
     }
