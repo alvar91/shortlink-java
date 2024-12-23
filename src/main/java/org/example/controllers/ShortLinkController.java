@@ -10,21 +10,58 @@ import org.example.services.UserService;
 import java.util.Scanner;
 import java.util.UUID;
 
+/**
+ * Controller for managing the URL shortening service.
+ * <p>
+ * This class handles user commands, interacts with the services and repositories,
+ * and provides the main loop for the application's operation.
+ * </p>
+ *
+ * @author alvar91
+ * @version 1.0
+ */
 public class ShortLinkController {
-    UUID userId = null;  // The current user ID
 
-    Scanner scanner = new Scanner(System.in);  // Scanner for reading user input
+    /**
+     * The current user ID.
+     */
+    UUID userId = null;
 
-    // Repositories for users and links
+    /**
+     * Scanner for reading user input.
+     */
+    Scanner scanner = new Scanner(System.in);
+
+    // Repositories and services for managing users and links
+
+    /**
+     * Repository for managing user data.
+     */
     UsersRepository usersRepository = new UsersRepository();
+
+    /**
+     * Repository for managing link data.
+     */
     LinksRepository linksRepository = new LinksRepository();
 
-    // Services for managing users, links, and configuration
+    /**
+     * Service for configuration management.
+     */
     ConfigService configService = new ConfigService();
+
+    /**
+     * Service for user management.
+     */
     UserService userService = new UserService(usersRepository);
+
+    /**
+     * Service for link management.
+     */
     LinkService linkService = new LinkService(linksRepository, configService);
 
-    // Displays the help menu with available commands
+    /**
+     * Displays the help menu with a list of available commands.
+     */
     private void showHelpMenu() {
         System.out.println("exit: exit the program");
         System.out.println("register: create a new user");
@@ -36,16 +73,22 @@ public class ShortLinkController {
         System.out.println("clear: remove expired links");
     }
 
-    // Registers a new user and logs them in
+    /**
+     * Registers a new user and logs them in.
+     */
     private void showRegisterMenu() {
-        UUID newUserId = userService.createUserId();  // Create a new user ID
-        userId = newUserId;  // Set the new user ID as the current user
+        UUID newUserId = userService.createUserId();
+        userId = newUserId;
 
         System.out.println("A new user has been registered with UUID: " + newUserId);
         System.out.println("You have logged in as a user: " + userId);
     }
 
-    // Logs in an existing user using their UUID
+    /**
+     * Logs in an existing user using their UUID.
+     *
+     * @param chunks Input split into command parts.
+     */
     private void showLoginMenu(String[] chunks) {
         if (chunks.length < 2) {
             System.out.println("Usage: login UUID");
@@ -53,10 +96,9 @@ public class ShortLinkController {
         }
 
         try {
-            UUID loginUserId = UUID.fromString(chunks[1]);  // Convert the input string to UUID
-
+            UUID loginUserId = UUID.fromString(chunks[1]);
             if (userService.isUserExist(loginUserId)) {
-                userId = loginUserId;  // Log in the user
+                userId = loginUserId;
                 System.out.println("You have logged in as user:" + userId);
                 return;
             }
@@ -67,15 +109,21 @@ public class ShortLinkController {
         }
     }
 
-    // Prints a message when no user is logged in
+    /**
+     * Prints a message when no user is logged in.
+     */
     private void printNoUserId() {
         System.out.println("Please register or login");
     }
 
-    // Handles shortening a URL
+    /**
+     * Handles shortening a URL.
+     *
+     * @param chunks Input split into command parts.
+     */
     private void showShortMenu(String[] chunks) {
         if (userId == null) {
-            printNoUserId();  // Ensure the user is logged in
+            printNoUserId();
         }
         if (chunks.length < 4) {
             System.out.println("Incorrect input format: short url clicksLimit lifetimeHours");
@@ -83,11 +131,10 @@ public class ShortLinkController {
         }
 
         try {
-            String url = chunks[1];  // The URL to shorten
-            int clicksLimit = Integer.parseInt(chunks[2]);  // The click limit
-            int lifetimeHours = Integer.parseInt(chunks[3]);  // The lifetime in hours
+            String url = chunks[1];
+            int clicksLimit = Integer.parseInt(chunks[2]);
+            int lifetimeHours = Integer.parseInt(chunks[3]);
 
-            // Create the shortened URL
             ShortLink shortLink = linkService.createShortLink(userId, url, clicksLimit, lifetimeHours);
             System.out.println("Shortened link: " + shortLink.getShortenedUrl());
         } catch (NumberFormatException e) {
@@ -95,20 +142,28 @@ public class ShortLinkController {
         }
     }
 
-    // Handles opening a shortened URL
+    /**
+     * Handles opening a shortened URL.
+     *
+     * @param chunks Input split into command parts.
+     */
     private void showOpenMenu(String[] chunks) {
         if (chunks.length < 2) {
             System.out.println("Incorrect input format: open shortUrl");
             return;
         }
 
-        linkService.openLink(chunks[1]);  // Open the shortened URL
+        linkService.openLink(chunks[1]);
     }
 
-    // Handles changing the click limit for a shortened URL
+    /**
+     * Handles changing the click limit for a shortened URL.
+     *
+     * @param chunks Input split into command parts.
+     */
     private void showEditClicksMenu(String[] chunks) {
         if (userId == null) {
-            printNoUserId();  // Ensure the user is logged in
+            printNoUserId();
         }
 
         if (chunks.length < 3) {
@@ -117,19 +172,23 @@ public class ShortLinkController {
         }
 
         try {
-            String shortUrl = chunks[1];  // The shortened URL
-            int newLimit = Integer.parseInt(chunks[2]);  // The new click limit
+            String shortUrl = chunks[1];
+            int newLimit = Integer.parseInt(chunks[2]);
 
-            linkService.editLimit(userId, shortUrl, newLimit);  // Update the click limit
+            linkService.editLimit(userId, shortUrl, newLimit);
         } catch (NumberFormatException e) {
             System.out.println("Invalid number format for shortUrl or newLimit");
         }
     }
 
-    // Handles removing a shortened URL
+    /**
+     * Handles removing a shortened URL.
+     *
+     * @param chunks Input split into command parts.
+     */
     private void showRemoveMenu(String[] chunks) {
         if (userId == null) {
-            printNoUserId();  // Ensure the user is logged in
+            printNoUserId();
         }
 
         if (chunks.length < 2) {
@@ -137,63 +196,65 @@ public class ShortLinkController {
             return;
         }
 
-        String shortUrl = chunks[1];  // The shortened URL
-        linkService.removeLink(userId, shortUrl);  // Remove the link
+        String shortUrl = chunks[1];
+        linkService.removeLink(userId, shortUrl);
     }
 
-    // Handles clearing expired links
+    /**
+     * Handles clearing expired links.
+     */
     private void showClearMenu() {
-        linkService.removeExpiredLinks();  // Remove all expired links
+        linkService.removeExpiredLinks();
         System.out.println("Expired links have been removed");
     }
 
-    // Main loop for handling user input and executing commands
+    /**
+     * Main loop for handling user input and executing commands.
+     */
     public void run() {
         System.out.println("Welcome to the URL Shortening Service!");
         System.out.println("To view the available commands, enter the command help");
 
         boolean isRunning = true;
         while (isRunning) {
-            String input = scanner.nextLine().trim();  // Read user input
-
+            String input = scanner.nextLine().trim();
             if (input.isEmpty()) continue;
 
             String[] chunks = input.split("\\s+");
-            String action = chunks[0].toLowerCase();  // Get the action (command)
+            String action = chunks[0].toLowerCase();
 
-            // Process the action based on the command entered by the user
             switch (action) {
                 case "help":
-                    showHelpMenu();  // Show available commands
+                    showHelpMenu();
                     break;
                 case "exit":
-                    isRunning = false;  // Exit the program
+                    isRunning = false;
                     break;
                 case "register":
-                    showRegisterMenu();  // Register a new user
+                    showRegisterMenu();
                     break;
                 case "login":
-                    showLoginMenu(chunks);  // Log in an existing user
+                    showLoginMenu(chunks);
                     break;
                 case "short":
-                    showShortMenu(chunks);  // Shorten a URL
+                    showShortMenu(chunks);
                     break;
                 case "open":
-                    showOpenMenu(chunks);  // Open a shortened URL
+                    showOpenMenu(chunks);
                     break;
                 case "edit_clicks_limit":
-                    showEditClicksMenu(chunks);  // Edit the click limit for a link
+                    showEditClicksMenu(chunks);
                     break;
                 case "remove":
-                    showRemoveMenu(chunks);  // Remove a shortened URL
+                    showRemoveMenu(chunks);
                     break;
                 case "clear":
-                    showClearMenu();  // Remove expired links
+                    showClearMenu();
                     break;
                 default:
                     System.out.println("Unknown command. Type help for a list of commands");
             }
         }
-        scanner.close();  // Close the scanner when done
+        scanner.close();
     }
 }
